@@ -3,356 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>马年祈福 | 2026 飞黄腾达</title>
+    <title>马年祈福 | 2026</title>
     <style>
-        :root {
-            --gold: #ffcf67;
-            --dark-red: #4a0404;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: radial-gradient(circle, var(--dark-red) 0%, #000 100%);
-            font-family: 'STKaiti', 'Microsoft YaHei', serif;
-            color: var(--gold);
-        }
-
-        #canvas-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        #ui-overlay {
-            position: relative;
-            z-index: 10;
-            pointer-events: none;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 40px;
-            box-sizing: border-box;
-        }
-
-        header {
-            text-align: center;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        header h1 {
-            font-size: 3rem;
-            margin: 0;
-            letter-spacing: 8px;
-            text-shadow: 0 0 15px rgba(255, 207, 103, 0.5);
-        }
-
-        /* 控制面板 */
-        .controls {
-            position: absolute;
-            right: 40px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.4);
-            padding: 20px;
-            border: 1px solid var(--gold);
-            border-radius: 4px;
-            pointer-events: auto;
-            backdrop-filter: blur(5px);
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .control-item {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        label { font-size: 0.9rem; }
-        input[type="range"] { accent-color: var(--gold); cursor: pointer; }
-
-        /* 祈福按钮 */
-        .bless-btn {
-            position: absolute;
-            bottom: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            pointer-events: auto;
-            background: transparent;
-            border: 2px solid var(--gold);
-            color: var(--gold);
-            padding: 15px 40px;
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            letter-spacing: 4px;
-            box-shadow: 0 0 10px rgba(255, 207, 103, 0.2);
-        }
-
-        .bless-btn:hover {
-            background: var(--gold);
-            color: var(--dark-red);
-            box-shadow: 0 0 30px var(--gold);
-        }
-
-        /* 抽签卡片 */
-        #fortune-card {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            width: 300px;
-            height: 450px;
-            background: #fff;
-            border: 10px solid var(--gold);
-            border-image: linear-gradient(45deg, #d4af37, #fcf6ba, #b8860b) 1;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-            pointer-events: auto;
-        }
-
-        #fortune-card h2 { color: #c0392b; font-size: 2.5rem; margin-bottom: 20px; }
-        #fortune-card p { color: #333; font-size: 1.2rem; line-height: 1.6; }
-        .close-card { margin-top: 30px; cursor: pointer; text-decoration: underline; color: #888; }
-
-        .loading {
-            position: fixed;
-            top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 1.2rem;
-            color: white;
-            z-index: 20;
-            background: rgba(0,0,0,0.5);
-            padding: 10px 20px;
-            border-radius: 20px;
-            pointer-events: none;
-        }
+        :root { --gold: #ffcf67; --dark-red: #4a0404; }
+        body { margin: 0; overflow: hidden; background: radial-gradient(circle, var(--dark-red) 0%, #000 100%); font-family: 'STKaiti', serif; color: var(--gold); }
+        #canvas-container { position: fixed; width: 100%; height: 100%; z-index: 1; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.2rem; color: white; z-index: 20; background: rgba(0,0,0,0.6); padding: 15px 30px; border-radius: 30px; pointer-events: none; }
+        
+        /* UI 层 */
+        #ui-layer { position: absolute; z-index: 10; width: 100%; height: 100%; pointer-events: none; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
+        h1 { text-align: center; text-shadow: 0 0 20px rgba(255, 207, 103, 0.6); margin: 0; }
+        .controls { pointer-events: auto; position: absolute; right: 40px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.3); padding: 20px; border: 1px solid var(--gold); }
+        .btn { pointer-events: auto; background: transparent; border: 1px solid var(--gold); color: var(--gold); padding: 10px 30px; font-size: 1.2rem; margin: 0 auto; display: block; cursor: pointer; transition: 0.3s; background: rgba(0,0,0,0.5); }
+        .btn:hover { background: var(--gold); color: #000; }
     </style>
 </head>
 <body>
 
+    <div id="loading">正在加载原版模型...</div>
     <div id="canvas-container"></div>
-    <div id="loading" class="loading">正在连接灵兽...</div>
 
-    <div id="ui-overlay">
-        <header id="header">
-            <h1>乙巳马年 · 万象更新</h1>
-        </header>
-
+    <div id="ui-layer">
+        <h1>乙巳马年 · 祈福</h1>
+        
         <div class="controls">
-            <div class="control-item">
-                <label>奔跑速度</label>
-                <input type="range" id="speedRange" min="0.1" max="2.5" step="0.1" value="1.0">
-            </div>
-            <div class="control-item">
-                <label>灵力颜色</label>
-                <input type="color" id="colorPicker" value="#ffcf67">
-            </div>
+            <label>播放速度</label><br>
+            <input type="range" id="speed" min="0" max="2" step="0.1" value="1" style="accent-color: #ffcf67;">
         </div>
 
-        <button class="bless-btn" id="blessBtn">虔诚祈福</button>
-    </div>
-
-    <div id="fortune-card">
-        <h2 id="fortune-title">上上签</h2>
-        <p id="fortune-text">一马当先，步步高升。</p>
-        <div class="close-card" id="closeCard">返回</div>
+        <button class="btn" onclick="toggleMaterial()">切换：原色 / 黄金</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <script>
-        const MODEL_URL = './horse.glb';
-        const fortunes = [ "一马当先，万事顺意", "龙马精神，身体安康", "飞黄腾达，前程似锦", "马到成功，金榜题名", "策马扬鞭，志在千里" ];
-
-        let scene, camera, renderer, mixer, clock, horseModel;
-        let snowSystem, controls;
+        const MODEL_PATH = './horse.glb';
+        
+        let scene, camera, renderer, mixer, controls;
+        let horseModel;
+        let originalMaterials = new Map(); // 存储原始材质
+        let isGold = true; // 默认显示金色
 
         function init() {
+            // 1. 场景
             scene = new THREE.Scene();
-            // 雾效：让远处的马腿隐入背景，增加神秘感
-            scene.fog = new THREE.FogExp2(0x000000, 0.05);
+            scene.fog = new THREE.FogExp2(0x110000, 0.02); // 红色雾气
 
-            // 相机设置：Z=6 确保能看到全身
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 1, 7); 
-
+            // 2. 相机 (初始位置无所谓，后面会自动调整)
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
+            
+            // 3. 渲染器
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-            clock = new THREE.Clock();
+            // 4. 灯光 (为了照亮黄金)
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+            const spot = new THREE.SpotLight(0xffd700, 2);
+            spot.position.set(10, 20, 10);
+            scene.add(spot);
+            const rimLight = new THREE.DirectionalLight(0xffffff, 1);
+            rimLight.position.set(-5, 5, -10);
+            scene.add(rimLight);
 
-            // 控制器
-            if(THREE.OrbitControls) {
-                controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-                controls.autoRotate = false;
-                controls.minDistance = 3;
-                controls.maxDistance = 15;
-            }
+            // 5. 控制器
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
 
-            // 灯光：关键！线框模式也需要反光才好看
-            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-            const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-            dirLight.position.set(5, 5, 5);
-            scene.add(dirLight);
-            // 增加一盏背光，勾勒轮廓
-            const backLight = new THREE.DirectionalLight(0xffd700, 1.5);
-            backLight.position.set(-5, 5, -5);
-            scene.add(backLight);
+            // 6. 加载模型
+            loadModel();
 
-            initSnow();
-            loadHorse();
+            // 7. 循环
             animate();
-
-            // UI 绑定
-            window.addEventListener('resize', onWindowResize);
-            document.getElementById('speedRange').addEventListener('input', (e) => { if(mixer) mixer.timeScale = e.target.value; });
-            document.getElementById('colorPicker').addEventListener('input', (e) => { 
-                updateHorseColor(e.target.value);
+            
+            // 监听UI
+            document.getElementById('speed').addEventListener('input', (e) => {
+                if(mixer) mixer.timeScale = Number(e.target.value);
             });
-            document.getElementById('blessBtn').addEventListener('click', triggerBlessing);
-            document.getElementById('closeCard').addEventListener('click', () => {
-                gsap.to("#fortune-card", { duration: 0.5, opacity: 0, scale: 0.8, display: 'none' });
-                gsap.to(camera.position, { duration: 1.5, z: 7, y: 1, ease: "power2.inOut" });
-            });
-            gsap.to("#header", { delay: 1, duration: 2, opacity: 1, y: 20 });
+            window.addEventListener('resize', onResize);
         }
 
-        function initSnow() {
-            const count = 1000;
-            const geo = new THREE.BufferGeometry();
-            const pos = new Float32Array(count * 3);
-            for (let i = 0; i < count * 3; i++) pos[i] = (Math.random() - 0.5) * 20;
-            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            const mat = new THREE.PointsMaterial({
-                size: 0.05, color: 0xffffff, transparent: true, opacity: 0.8,
-                blending: THREE.AdditiveBlending
-            });
-            snowSystem = new THREE.Points(geo, mat);
-            scene.add(snowSystem);
-        }
-
-        function loadHorse() {
+        function loadModel() {
             const loader = new THREE.GLTFLoader();
-            loader.load(MODEL_URL, (gltf) => {
+            loader.load(MODEL_PATH, (gltf) => {
                 document.getElementById('loading').style.display = 'none';
-                
                 horseModel = gltf.scene;
-                
-                // 1. 自动调整大小和位置 (沿用之前的成功逻辑)
-                const box = new THREE.Box3().setFromObject(horseModel);
-                const size = box.getSize(new THREE.Vector3());
-                const center = box.getCenter(new THREE.Vector3());
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = 3.5 / (maxDim || 1); // 缩放系数
-                
-                horseModel.scale.set(scale, scale, scale);
-                horseModel.position.x = -center.x * scale;
-                horseModel.position.y = -center.y * scale;
-                horseModel.position.z = -center.z * scale;
+                scene.add(horseModel);
 
-                // 2. 旋转一下，让它侧面对着镜头，更帅
-                const pivotGroup = new THREE.Group();
-                scene.add(pivotGroup);
-                pivotGroup.add(horseModel);
-                pivotGroup.rotation.y = Math.PI / 1.6; // 旋转约110度
+                // --- 关键点：绝对不缩放模型！---
+                // horseModel.scale.set(...)  <-- 删掉了这行罪魁祸首
 
-                // 3. 【核心修改】应用“全息线框”材质
-                // 这种方式兼容性最强，不会报错
-                horseModel.traverse((child) => {
-                    if (child.isMesh || child.isSkinnedMesh) {
-                        // 创建金色线框材质
-                        child.material = new THREE.MeshBasicMaterial({
-                            color: 0xffcf67, // 金色
-                            wireframe: true, // 开启线框模式
-                            transparent: true,
-                            opacity: 0.4,    // 半透明
-                            skinning: true   // 必须开启，否则动画会把马撕裂
-                        });
+                // 备份原始材质，以便切换
+                horseModel.traverse(child => {
+                    if (child.isMesh) {
+                        originalMaterials.set(child, child.material);
+                        // 开启投影
+                        child.castShadow = true;
+                        child.receiveShadow = true;
                     }
                 });
 
-                // 4. 播放动画
+                // 默认应用黄金材质
+                applyGoldMaterial();
+
+                // --- 核心修复：自动调整相机去适应模型 ---
+                fitCameraToObject(horseModel);
+
+                // 播放动画
                 mixer = new THREE.AnimationMixer(horseModel);
                 if (gltf.animations.length > 0) {
                     mixer.clipAction(gltf.animations[0]).play();
                 }
 
-            }, 
-            (xhr) => {
-                if(xhr.total > 0) {
-                    const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
-                    document.getElementById('loading').innerText = "正在连接灵兽 (" + percent + "%)...";
-                }
-            },
-            (error) => { 
-                console.error(error); 
-                document.getElementById('loading').innerText = "加载失败，请刷新重试";
+            }, undefined, (err) => {
+                console.error(err);
+                document.getElementById('loading').innerText = "加载失败，请检查文件";
             });
         }
 
-        function updateHorseColor(colorHex) {
-            if(!horseModel) return;
-            horseModel.traverse((child) => {
-                if ((child.isMesh || child.isSkinnedMesh) && child.material) {
-                    child.material.color.set(colorHex);
+        // --- 智能相机适配函数 ---
+        function fitCameraToObject(object) {
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+
+            // 获取最大边长
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            
+            // 计算相机距离
+            let cameraZ = Math.abs(maxDim / 2 * Math.tan(fov * 2));
+            cameraZ *= 2.5; // 稍微退后一点，留出边距
+
+            // 设置相机位置
+            // 这里假设模型正面朝向 Z 轴或 X 轴，我们把相机放在侧面 
+            camera.position.set(center.x + cameraZ * 0.5, center.y + size.y * 0.5, center.z + cameraZ);
+            
+            // 让相机和控制器都看向模型中心
+            camera.lookAt(center);
+            controls.target.copy(center);
+            controls.update();
+            
+            console.log("模型尺寸:", size, "相机调整至:", camera.position);
+        }
+
+        // 切换材质功能
+        window.toggleMaterial = function() {
+            isGold = !isGold;
+            if (isGold) {
+                applyGoldMaterial();
+            } else {
+                horseModel.traverse(child => {
+                    if (child.isMesh && originalMaterials.has(child)) {
+                        child.material = originalMaterials.get(child);
+                    }
+                });
+            }
+        }
+
+        function applyGoldMaterial() {
+            // 创建高级黄金材质 (StandardMaterial)
+            const goldMat = new THREE.MeshStandardMaterial({
+                color: 0xffd700,     // 金色
+                metalness: 1.0,      // 金属感拉满
+                roughness: 0.3,      // 稍微光滑
+                emissive: 0x4a0404,  // 发出一点暗红光，增强质感
+                emissiveIntensity: 0.2
+            });
+
+            horseModel.traverse(child => {
+                if (child.isMesh) {
+                    child.material = goldMat;
                 }
             });
-        }
-
-        function triggerBlessing() {
-            gsap.to(camera.position, { duration: 2, z: 3.5, y: 0.5, ease: "power3.inOut" });
-            showFortune();
-        }
-
-        function showFortune() {
-            document.getElementById('fortune-text').innerText = fortunes[Math.floor(Math.random() * fortunes.length)];
-            const card = document.getElementById('fortune-card');
-            card.style.display = 'flex';
-            gsap.fromTo(card, { opacity: 0, scale: 0.5 }, { duration: 0.8, opacity: 1, scale: 1, ease: "back.out(1.7)" });
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            const delta = clock.getDelta();
-            if (mixer) mixer.update(delta);
-            if (controls) controls.update();
-            
-            if (snowSystem) {
-                snowSystem.rotation.y += 0.002;
-                const pos = snowSystem.geometry.attributes.position.array;
-                for (let i = 1; i < pos.length; i += 3) {
-                    pos[i] -= 0.02; if (pos[i] < -10) pos[i] = 10;
-                }
-                snowSystem.geometry.attributes.position.needsUpdate = true;
-            }
+            if (mixer) mixer.update(0.016); // 固定步长，防止切换网页时动画乱飞
+            controls.update();
             renderer.render(scene, camera);
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
         init();
