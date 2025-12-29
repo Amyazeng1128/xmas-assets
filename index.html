@@ -284,3 +284,93 @@
                                 #include <skinning_vertex>
                                 vec4 mvPosition = modelViewMatrix * skinned;
                                 gl_PointSize = 4.0 * (10.0 / -mvPosition.z);
+                                gl_Position = projectionMatrix * mvPosition;
+                            }
+                        `,
+                        fragmentShader: `
+                            uniform vec3 uColor;
+                            void main() {
+                                float r = distance(gl_PointCoord, vec2(0.5));
+                                if (r > 0.5) discard;
+                                gl_FragColor = vec4(uColor, 1.0 - r * 2.0);
+                            }
+                        `,
+                        transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, skinning: true
+                    });
+
+                    horseParticles = new THREE.Points(originalMesh.geometry, pointShaderMaterial);
+                    if (originalMesh.skeleton) {
+                         horseParticles.skeleton = originalMesh.skeleton;
+                         horseParticles.bindMatrix = originalMesh.bindMatrix;
+                         horseParticles.bindMatrixInverse = originalMesh.bindMatrixInverse;
+                    }
+
+                    // 应用缩放和居中到粒子对象
+                    horseParticles.scale.set(scale, scale, scale);
+                    horseParticles.position.x = -center.x * scale;
+                    horseParticles.position.y = -center.y * scale;
+                    horseParticles.position.z = -center.z * scale;
+                    
+                    // 将粒子放入容器，并旋转容器
+                    container.add(horseParticles);
+                    
+                    // 让马头朝左或朝右 (根据模型情况，这里旋转 90 度)
+                    container.rotation.y = Math.PI / 1.5; 
+
+                    mixer = new THREE.AnimationMixer(horseParticles);
+                    if (gltf.animations.length > 0) mixer.clipAction(gltf.animations[0]).play();
+                } 
+            }, 
+            (xhr) => {
+                // 显示进度
+                if(xhr.total > 0) {
+                    const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
+                    document.getElementById('loading').innerText = "正在召唤天马 (进度 " + percent + "%)...";
+                }
+            },
+            (error) => { console.error(error); });
+        }
+
+        function triggerBlessing() {
+            gsap.to(camera.position, { duration: 2, z: 3, y: 0.5, ease: "power3.inOut" }); // 推近
+            if (horseParticles) {
+                const tl = gsap.timeline();
+                tl.to(horseParticles.material.uniforms.uColor.value, { r: 1, g: 1, b: 1, duration: 0.5 })
+                  .to(horseParticles.material.uniforms.uColor.value, { r: 1, g: 0.8, b: 0, duration: 1, onComplete: showFortune });
+            } else { showFortune(); }
+        }
+
+        function showFortune() {
+            document.getElementById('fortune-text').innerText = fortunes[Math.floor(Math.random() * fortunes.length)];
+            const card = document.getElementById('fortune-card');
+            card.style.display = 'flex';
+            gsap.fromTo(card, { opacity: 0, scale: 0.5 }, { duration: 0.8, opacity: 1, scale: 1, ease: "back.out(1.7)" });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+            if (controls) controls.update(); // 更新鼠标控制
+            
+            if (snowSystem) {
+                snowSystem.rotation.y += 0.002;
+                const pos = snowSystem.geometry.attributes.position.array;
+                for (let i = 1; i < pos.length; i += 3) {
+                    pos[i] -= 0.02; if (pos[i] < -10) pos[i] = 10;
+                }
+                snowSystem.geometry.attributes.position.needsUpdate = true;
+            }
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>
