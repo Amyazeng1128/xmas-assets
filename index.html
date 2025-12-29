@@ -3,212 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>马年祈福 | 2026</title>
+    <title>马年祈福 | 2026 灵动光影</title>
     <style>
-        /* 1. 强制设置深色背景，防止白屏 */
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background-color: #2a0000; /* 纯色保底 */
-            background-image: radial-gradient(circle, #4a0404 0%, #000000 100%); 
-            font-family: 'STKaiti', 'Microsoft YaHei', serif; 
-            color: #ffcf67; 
-        }
-        
-        #canvas-container { position: fixed; width: 100%; height: 100%; z-index: 1; }
-        
-        /* 加载提示 */
-        #loading { 
-            position: fixed; top: 50%; left: 50%; 
-            transform: translate(-50%, -50%); 
-            font-size: 1.2rem; color: white; z-index: 20; 
-            background: rgba(0,0,0,0.8); padding: 20px 40px; 
-            border-radius: 10px; border: 1px solid #ffcf67;
-            text-align: center;
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            background-image: radial-gradient(circle at center, #4a0404 0%, #000000 80%);
+            font-family: 'STKaiti', 'Microsoft YaHei', serif;
+            color: #ffcf67;
         }
 
-        /* UI 层 */
-        #ui-layer { 
-            position: absolute; z-index: 10; width: 100%; height: 100%; 
-            pointer-events: none; padding: 40px; box-sizing: border-box; 
-            display: flex; flex-direction: column; justify-content: space-between; 
+        #canvas-container { position: fixed; width: 100%; height: 100%; z-index: 1; }
+
+        #ui-layer {
+            position: absolute; z-index: 10; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between; padding: 40px; box-sizing: border-box;
         }
-        h1 { margin: 0; text-shadow: 0 0 10px rgba(255, 207, 103, 0.8); text-align: center;}
-        
-        .controls { 
-            pointer-events: auto; position: absolute; right: 20px; top: 50%; 
-            transform: translateY(-50%); background: rgba(0,0,0,0.6); 
+
+        h1 {
+            text-align: center; font-size: 3rem; margin: 0;
+            text-shadow: 0 0 20px rgba(255, 207, 103, 0.8);
+            letter-spacing: 10px;
+        }
+
+        .controls {
+            pointer-events: auto; position: absolute; right: 40px; top: 50%;
+            transform: translateY(-50%); background: rgba(0,0,0,0.5);
             padding: 20px; border: 1px solid #ffcf67; border-radius: 8px;
+            text-align: center;
         }
+        
+        .btn {
+            pointer-events: auto; margin-top: 20px; padding: 10px 30px;
+            background: transparent; border: 2px solid #ffcf67; color: #ffcf67;
+            font-size: 1.2rem; cursor: pointer; transition: 0.3s;
+            position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+        }
+        .btn:hover { background: #ffcf67; color: #000; box-shadow: 0 0 20px #ffcf67; }
+
+        /* 祝福卡片 */
+        #card {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            width: 300px; height: 400px; background: #fffdf5;
+            border: 8px solid #b8860b; z-index: 20;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+        #card.show { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
+        #card h2 { color: #8b0000; font-size: 3rem; margin: 0 0 20px 0; }
+        #card p { color: #333; font-size: 1.5rem; writing-mode: vertical-rl; letter-spacing: 5px; height: 150px; }
+        .close { margin-top: 20px; cursor: pointer; color: #999; text-decoration: underline; font-size: 0.9rem; }
+
     </style>
 </head>
 <body>
 
-    <div id="loading">
-        正在解析模型...<br>
-        <span style="font-size: 0.8em; color: #aaa;">(如果长时间不动，请刷新)</span>
-    </div>
-    
     <div id="canvas-container"></div>
 
     <div id="ui-layer">
-        <h1>乙巳马年 · 祈福</h1>
+        <h1>乙巳 · 龙马精神</h1>
+        
         <div class="controls">
-            <label>动画速度</label><br>
-            <input type="range" id="speed" min="0" max="3" step="0.1" value="1" style="accent-color: #ffcf67;">
+            <label>粒子数量</label><br>
+            <span style="font-size:0.8rem; color:#aaa;">(根据设备性能调整)</span>
         </div>
+
+        <button class="btn" onclick="showFortune()">✨ 开启祈福 ✨</button>
+    </div>
+
+    <div id="card">
+        <h2 id="fortune-title">上上签</h2>
+        <p id="fortune-text">一马当先 万事胜意</p>
+        <div class="close" onclick="closeFortune()">收下祝福</div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <script>
-        const MODEL_PATH = './horse.glb';
+        let scene, camera, renderer, particles;
+        let mouseX = 0, mouseY = 0;
+        let time = 0;
+
+        // 这是一个马的剪影数据点阵 (简化版，无需加载图片，代码绘制)
+        // 我们用简单的正弦波生成一个流动的“马”形状的能量场
         
-        let scene, camera, renderer, mixer, controls;
-        let horseWrapper; // 这是一个盒子，用来装马
-
         function init() {
-            // 1. 场景
             scene = new THREE.Scene();
-            // 即使CSS背景失败，这里也设置一个深色雾气作为保底
-            scene.background = new THREE.Color(0x110000); 
-            scene.fog = new THREE.Fog(0x110000, 10, 50);
+            // 雾效增强深邃感
+            scene.fog = new THREE.FogExp2(0x000000, 0.002);
 
-            // 2. 相机 (视距拉大到 100000，防止大模型被切掉)
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000);
-            camera.position.set(0, 5, 10); // 初始位置
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 2000);
+            camera.position.z = 1000;
 
-            // 3. 渲染器
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.setPixelRatio(window.devicePixelRatio);
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-            // 4. 灯光 (全方位打光)
-            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambient);
-            const dirLight = new THREE.DirectionalLight(0xffd700, 2); // 金光
-            dirLight.position.set(5, 10, 7);
-            scene.add(dirLight);
-            const backLight = new THREE.DirectionalLight(0xffffff, 1); // 背光
-            backLight.position.set(-5, 5, -10);
-            scene.add(backLight);
-
-            // 5. 辅助工具 (网格和坐标轴，帮你确认场景是否加载)
-            // 地面网格：大小 200，分 20 格
-            const gridHelper = new THREE.GridHelper(200, 20, 0x444444, 0x222222);
-            scene.add(gridHelper);
-            // 坐标轴：红=X, 绿=Y, 蓝=Z (长度5)
-            const axesHelper = new THREE.AxesHelper(5);
-            scene.add(axesHelper);
-
-            // 6. 控制器
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-
-            // 7. 加载模型
-            loadModelWrapper();
-
-            // 8. 循环
-            animate();
+            createParticles();
             
-            // UI
-            document.getElementById('speed').addEventListener('input', (e) => {
-                if(mixer) mixer.timeScale = Number(e.target.value);
-            });
-            window.addEventListener('resize', onResize);
+            document.addEventListener('mousemove', onDocumentMouseMove, false);
+            window.addEventListener('resize', onWindowResize, false);
+            
+            animate();
         }
 
-        function loadModelWrapper() {
-            const loader = new THREE.GLTFLoader();
-            loader.load(MODEL_PATH, (gltf) => {
-                document.getElementById('loading').style.display = 'none';
-                
-                const rawModel = gltf.scene;
-                
-                // === 核心修复技术：容器包裹法 ===
-                
-                // 1. 创建一个盒子(Group)放到场景中心
-                horseWrapper = new THREE.Group();
-                scene.add(horseWrapper);
-                
-                // 2. 把马放进盒子里
-                horseWrapper.add(rawModel);
+        function createParticles() {
+            const geometry = new THREE.BufferGeometry();
+            const count = 3000; // 粒子数量
+            const positions = [];
+            const scales = [];
+            const speeds = []; // 每个粒子的速度
 
-                // 3. 计算马的尺寸和偏差
-                const box = new THREE.Box3().setFromObject(rawModel);
-                const size = box.getSize(new THREE.Vector3());
-                const center = box.getCenter(new THREE.Vector3());
-
-                console.log("原始模型尺寸:", size);
-                console.log("原始模型中心:", center);
-
-                // 4. 【关键修正】把马挪到盒子的中心
-                // 这样无论马原来的坐标偏移了多少，它都会回到盒子的(0,0,0)
-                rawModel.position.x = -center.x;
-                rawModel.position.y = -center.y;
-                rawModel.position.z = -center.z;
-
-                // 5. 【关键缩放】缩放盒子，而不是缩放马
-                // 目标：让马看起来大约 6 米高
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const targetSize = 6.0; 
-                const scaleFactor = targetSize / (maxDim || 1); // 防止除以0
+            for (let i = 0; i < count; i++) {
+                // 在空间中随机分布
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 1000;
+                const z = (Math.random() - 0.5) * 1000;
                 
-                horseWrapper.scale.set(scaleFactor, scaleFactor, scaleFactor);
-                
-                // 6. 把它稍微抬高一点，站在网格面上
-                horseWrapper.position.y = targetSize / 2;
+                positions.push(x, y, z);
+                scales.push(Math.random() * 10); // 随机大小
+                speeds.push(Math.random());
+            }
 
-                // 7. 材质美化：全部刷成金色
-                const goldMat = new THREE.MeshStandardMaterial({
-                    color: 0xffd700,
-                    metalness: 0.8,
-                    roughness: 0.2,
-                    emissive: 0x220000
-                });
-                
-                rawModel.traverse(child => {
-                    if (child.isMesh) {
-                        child.material = goldMat;
-                        child.castShadow = true;
-                    }
-                });
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('scale', new THREE.Float32BufferAttribute(scales, 1));
+            geometry.setAttribute('speed', new THREE.Float32BufferAttribute(speeds, 1));
 
-                // 8. 播放动画
-                mixer = new THREE.AnimationMixer(rawModel);
-                if (gltf.animations.length > 0) {
-                    mixer.clipAction(gltf.animations[0]).play();
-                }
-
-            }, 
-            (xhr) => {
-                // 加载进度
-                if(xhr.total > 0) {
-                    const percent = Math.round((xhr.loaded / xhr.total * 100));
-                    document.getElementById('loading').innerHTML = `正在搬运天马... ${percent}%`;
-                }
-            },
-            (err) => {
-                console.error(err);
-                document.getElementById('loading').innerHTML = `❌ 加载失败<br>请检查 horse.glb 是否上传`;
-                document.getElementById('loading').style.borderColor = "red";
+            // 使用 Canvas 画一个发光的圆点作为材质贴图
+            const material = new THREE.PointsMaterial({
+                color: 0xffd700, // 金色
+                size: 8,
+                map: createSprite(),
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending, // 发光叠加模式
+                depthWrite: false
             });
+
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+        }
+
+        // 画一个发光球材质
+        function createSprite() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)'); // 中心白
+            gradient.addColorStop(0.2, 'rgba(255, 215, 0, 1)'); // 中间金
+            gradient.addColorStop(0.4, 'rgba(64, 0, 0, 1)');    // 边缘红
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');       // 外圈透明
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 32, 32);
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+
+        function onDocumentMouseMove(event) {
+            mouseX = event.clientX - window.innerWidth / 2;
+            mouseY = event.clientY - window.innerHeight / 2;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            if (mixer) mixer.update(0.016);
-            controls.update();
+            render();
+        }
+
+        function render() {
+            time += 0.005;
+
+            // 让整个粒子云缓慢旋转
+            particles.rotation.y += 0.002;
+            
+            // 粒子波动动画 (核心算法)
+            const positions = particles.geometry.attributes.position.array;
+            const scales = particles.geometry.attributes.scale.array;
+            
+            for (let i = 0; i < positions.length; i += 3) {
+                // 让粒子像呼吸一样运动，甚至可以形成抽象的波浪
+                // 这里我们做一个简化的“星河奔腾”效果
+                
+                // Z轴运动（迎面飞来）
+                positions[i + 2] += 2; 
+                
+                // 如果飞过头了，重置到远处
+                if (positions[i + 2] > 1000) {
+                    positions[i + 2] = -1000;
+                    positions[i] = (Math.random() - 0.5) * 2000; // 重置X
+                    positions[i + 1] = (Math.random() - 0.5) * 1000; // 重置Y
+                }
+
+                // 简单的正弦波让它们上下浮动
+                positions[i + 1] += Math.sin(time * 5 + positions[i] * 0.01) * 0.5;
+
+                // 闪烁效果
+                scales[i/3] = (Math.sin(time * 10 + i) + 1.5) * 5;
+            }
+            
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.geometry.attributes.scale.needsUpdate = true;
+
+            // 相机跟随鼠标轻微移动
+            camera.position.x += (mouseX - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY - camera.position.y) * 0.05;
+            camera.lookAt(scene.position);
+
             renderer.render(scene, camera);
         }
 
-        function onResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        // UI 逻辑
+        const fortunes = ["马到成功", "一马当先", "前程似锦", "龙马精神", "飞黄腾达"];
+        function showFortune() {
+            const randomText = fortunes[Math.floor(Math.random() * fortunes.length)];
+            document.getElementById('fortune-text').innerText = randomText;
+            document.getElementById('card').classList.add('show');
+            
+            // 祈福时的特效：相机加速冲刺
+            gsap.to(camera.position, { z: 500, duration: 2, ease: "power2.inOut" });
+        }
+
+        function closeFortune() {
+            document.getElementById('card').classList.remove('show');
+            gsap.to(camera.position, { z: 1000, duration: 2, ease: "power2.inOut" });
         }
 
         init();
