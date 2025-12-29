@@ -5,33 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>马年祈福 | 2026</title>
     <style>
-        :root { --gold: #ffcf67; --dark-red: #4a0404; }
-        body { margin: 0; overflow: hidden; background: radial-gradient(circle, var(--dark-red) 0%, #000 100%); font-family: 'STKaiti', serif; color: var(--gold); }
-        #canvas-container { position: fixed; width: 100%; height: 100%; z-index: 1; }
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.2rem; color: white; z-index: 20; background: rgba(0,0,0,0.6); padding: 15px 30px; border-radius: 30px; pointer-events: none; }
+        /* 1. 强制设置深色背景，防止白屏 */
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #2a0000; /* 纯色保底 */
+            background-image: radial-gradient(circle, #4a0404 0%, #000000 100%); 
+            font-family: 'STKaiti', 'Microsoft YaHei', serif; 
+            color: #ffcf67; 
+        }
         
+        #canvas-container { position: fixed; width: 100%; height: 100%; z-index: 1; }
+        
+        /* 加载提示 */
+        #loading { 
+            position: fixed; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); 
+            font-size: 1.2rem; color: white; z-index: 20; 
+            background: rgba(0,0,0,0.8); padding: 20px 40px; 
+            border-radius: 10px; border: 1px solid #ffcf67;
+            text-align: center;
+        }
+
         /* UI 层 */
-        #ui-layer { position: absolute; z-index: 10; width: 100%; height: 100%; pointer-events: none; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
-        h1 { text-align: center; text-shadow: 0 0 20px rgba(255, 207, 103, 0.6); margin: 0; }
-        .controls { pointer-events: auto; position: absolute; right: 40px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.3); padding: 20px; border: 1px solid var(--gold); }
-        .btn { pointer-events: auto; background: transparent; border: 1px solid var(--gold); color: var(--gold); padding: 10px 30px; font-size: 1.2rem; margin: 0 auto; display: block; cursor: pointer; transition: 0.3s; background: rgba(0,0,0,0.5); }
-        .btn:hover { background: var(--gold); color: #000; }
+        #ui-layer { 
+            position: absolute; z-index: 10; width: 100%; height: 100%; 
+            pointer-events: none; padding: 40px; box-sizing: border-box; 
+            display: flex; flex-direction: column; justify-content: space-between; 
+        }
+        h1 { margin: 0; text-shadow: 0 0 10px rgba(255, 207, 103, 0.8); text-align: center;}
+        
+        .controls { 
+            pointer-events: auto; position: absolute; right: 20px; top: 50%; 
+            transform: translateY(-50%); background: rgba(0,0,0,0.6); 
+            padding: 20px; border: 1px solid #ffcf67; border-radius: 8px;
+        }
     </style>
 </head>
 <body>
 
-    <div id="loading">正在加载原版模型...</div>
+    <div id="loading">
+        正在解析模型...<br>
+        <span style="font-size: 0.8em; color: #aaa;">(如果长时间不动，请刷新)</span>
+    </div>
+    
     <div id="canvas-container"></div>
 
     <div id="ui-layer">
         <h1>乙巳马年 · 祈福</h1>
-        
         <div class="controls">
-            <label>播放速度</label><br>
-            <input type="range" id="speed" min="0" max="2" step="0.1" value="1" style="accent-color: #ffcf67;">
+            <label>动画速度</label><br>
+            <input type="range" id="speed" min="0" max="3" step="0.1" value="1" style="accent-color: #ffcf67;">
         </div>
-
-        <button class="btn" onclick="toggleMaterial()">切换：原色 / 黄金</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -42,150 +67,140 @@
         const MODEL_PATH = './horse.glb';
         
         let scene, camera, renderer, mixer, controls;
-        let horseModel;
-        let originalMaterials = new Map(); // 存储原始材质
-        let isGold = true; // 默认显示金色
+        let horseWrapper; // 这是一个盒子，用来装马
 
         function init() {
             // 1. 场景
             scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x110000, 0.02); // 红色雾气
+            // 即使CSS背景失败，这里也设置一个深色雾气作为保底
+            scene.background = new THREE.Color(0x110000); 
+            scene.fog = new THREE.Fog(0x110000, 10, 50);
 
-            // 2. 相机 (初始位置无所谓，后面会自动调整)
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
-            
+            // 2. 相机 (视距拉大到 100000，防止大模型被切掉)
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000);
+            camera.position.set(0, 5, 10); // 初始位置
+
             // 3. 渲染器
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.outputEncoding = THREE.sRGBEncoding;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-            // 4. 灯光 (为了照亮黄金)
-            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            // 4. 灯光 (全方位打光)
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambient);
-            const spot = new THREE.SpotLight(0xffd700, 2);
-            spot.position.set(10, 20, 10);
-            scene.add(spot);
-            const rimLight = new THREE.DirectionalLight(0xffffff, 1);
-            rimLight.position.set(-5, 5, -10);
-            scene.add(rimLight);
+            const dirLight = new THREE.DirectionalLight(0xffd700, 2); // 金光
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+            const backLight = new THREE.DirectionalLight(0xffffff, 1); // 背光
+            backLight.position.set(-5, 5, -10);
+            scene.add(backLight);
 
-            // 5. 控制器
+            // 5. 辅助工具 (网格和坐标轴，帮你确认场景是否加载)
+            // 地面网格：大小 200，分 20 格
+            const gridHelper = new THREE.GridHelper(200, 20, 0x444444, 0x222222);
+            scene.add(gridHelper);
+            // 坐标轴：红=X, 绿=Y, 蓝=Z (长度5)
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+
+            // 6. 控制器
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
 
-            // 6. 加载模型
-            loadModel();
+            // 7. 加载模型
+            loadModelWrapper();
 
-            // 7. 循环
+            // 8. 循环
             animate();
             
-            // 监听UI
+            // UI
             document.getElementById('speed').addEventListener('input', (e) => {
                 if(mixer) mixer.timeScale = Number(e.target.value);
             });
             window.addEventListener('resize', onResize);
         }
 
-        function loadModel() {
+        function loadModelWrapper() {
             const loader = new THREE.GLTFLoader();
             loader.load(MODEL_PATH, (gltf) => {
                 document.getElementById('loading').style.display = 'none';
-                horseModel = gltf.scene;
-                scene.add(horseModel);
+                
+                const rawModel = gltf.scene;
+                
+                // === 核心修复技术：容器包裹法 ===
+                
+                // 1. 创建一个盒子(Group)放到场景中心
+                horseWrapper = new THREE.Group();
+                scene.add(horseWrapper);
+                
+                // 2. 把马放进盒子里
+                horseWrapper.add(rawModel);
 
-                // --- 关键点：绝对不缩放模型！---
-                // horseModel.scale.set(...)  <-- 删掉了这行罪魁祸首
+                // 3. 计算马的尺寸和偏差
+                const box = new THREE.Box3().setFromObject(rawModel);
+                const size = box.getSize(new THREE.Vector3());
+                const center = box.getCenter(new THREE.Vector3());
 
-                // 备份原始材质，以便切换
-                horseModel.traverse(child => {
+                console.log("原始模型尺寸:", size);
+                console.log("原始模型中心:", center);
+
+                // 4. 【关键修正】把马挪到盒子的中心
+                // 这样无论马原来的坐标偏移了多少，它都会回到盒子的(0,0,0)
+                rawModel.position.x = -center.x;
+                rawModel.position.y = -center.y;
+                rawModel.position.z = -center.z;
+
+                // 5. 【关键缩放】缩放盒子，而不是缩放马
+                // 目标：让马看起来大约 6 米高
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const targetSize = 6.0; 
+                const scaleFactor = targetSize / (maxDim || 1); // 防止除以0
+                
+                horseWrapper.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                
+                // 6. 把它稍微抬高一点，站在网格面上
+                horseWrapper.position.y = targetSize / 2;
+
+                // 7. 材质美化：全部刷成金色
+                const goldMat = new THREE.MeshStandardMaterial({
+                    color: 0xffd700,
+                    metalness: 0.8,
+                    roughness: 0.2,
+                    emissive: 0x220000
+                });
+                
+                rawModel.traverse(child => {
                     if (child.isMesh) {
-                        originalMaterials.set(child, child.material);
-                        // 开启投影
+                        child.material = goldMat;
                         child.castShadow = true;
-                        child.receiveShadow = true;
                     }
                 });
 
-                // 默认应用黄金材质
-                applyGoldMaterial();
-
-                // --- 核心修复：自动调整相机去适应模型 ---
-                fitCameraToObject(horseModel);
-
-                // 播放动画
-                mixer = new THREE.AnimationMixer(horseModel);
+                // 8. 播放动画
+                mixer = new THREE.AnimationMixer(rawModel);
                 if (gltf.animations.length > 0) {
                     mixer.clipAction(gltf.animations[0]).play();
                 }
 
-            }, undefined, (err) => {
-                console.error(err);
-                document.getElementById('loading').innerText = "加载失败，请检查文件";
-            });
-        }
-
-        // --- 智能相机适配函数 ---
-        function fitCameraToObject(object) {
-            const box = new THREE.Box3().setFromObject(object);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-
-            // 获取最大边长
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const fov = camera.fov * (Math.PI / 180);
-            
-            // 计算相机距离
-            let cameraZ = Math.abs(maxDim / 2 * Math.tan(fov * 2));
-            cameraZ *= 2.5; // 稍微退后一点，留出边距
-
-            // 设置相机位置
-            // 这里假设模型正面朝向 Z 轴或 X 轴，我们把相机放在侧面 
-            camera.position.set(center.x + cameraZ * 0.5, center.y + size.y * 0.5, center.z + cameraZ);
-            
-            // 让相机和控制器都看向模型中心
-            camera.lookAt(center);
-            controls.target.copy(center);
-            controls.update();
-            
-            console.log("模型尺寸:", size, "相机调整至:", camera.position);
-        }
-
-        // 切换材质功能
-        window.toggleMaterial = function() {
-            isGold = !isGold;
-            if (isGold) {
-                applyGoldMaterial();
-            } else {
-                horseModel.traverse(child => {
-                    if (child.isMesh && originalMaterials.has(child)) {
-                        child.material = originalMaterials.get(child);
-                    }
-                });
-            }
-        }
-
-        function applyGoldMaterial() {
-            // 创建高级黄金材质 (StandardMaterial)
-            const goldMat = new THREE.MeshStandardMaterial({
-                color: 0xffd700,     // 金色
-                metalness: 1.0,      // 金属感拉满
-                roughness: 0.3,      // 稍微光滑
-                emissive: 0x4a0404,  // 发出一点暗红光，增强质感
-                emissiveIntensity: 0.2
-            });
-
-            horseModel.traverse(child => {
-                if (child.isMesh) {
-                    child.material = goldMat;
+            }, 
+            (xhr) => {
+                // 加载进度
+                if(xhr.total > 0) {
+                    const percent = Math.round((xhr.loaded / xhr.total * 100));
+                    document.getElementById('loading').innerHTML = `正在搬运天马... ${percent}%`;
                 }
+            },
+            (err) => {
+                console.error(err);
+                document.getElementById('loading').innerHTML = `❌ 加载失败<br>请检查 horse.glb 是否上传`;
+                document.getElementById('loading').style.borderColor = "red";
             });
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            if (mixer) mixer.update(0.016); // 固定步长，防止切换网页时动画乱飞
+            if (mixer) mixer.update(0.016);
             controls.update();
             renderer.render(scene, camera);
         }
